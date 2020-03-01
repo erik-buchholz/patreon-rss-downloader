@@ -1,2 +1,4 @@
 .idea
-/rss.xml
+out
+*.xml
+tmp.txt
