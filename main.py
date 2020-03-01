@@ -3,9 +3,11 @@
 A simple downloader for all audio files from a Patreon Premium Audio RSS.
 """
 import logging
+import mimetypes
 import os
 import re
 import tempfile
+import argparse
 
 from clint.textui import progress
 import xml.etree.ElementTree as ET
@@ -15,13 +17,16 @@ import requests
 
 # Constants
 OUTPUT_DIR = "out"
-INPUT_FILE = "rss.xml"
-URL = ""
-MODE = "URL"  # FILE for reading from FILE and URL otherwise.
 
 # Logging
 FORMAT = '%(levelname)s: %(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
+
+
+class Mode:
+    """Operation Modes."""
+    FILE = "FILE"  # Load RSS XML file from file
+    URL = "URL"  # Load RSS XML from URL
 
 
 def download_file(url: str, file_path: str) -> None:
@@ -85,24 +90,40 @@ def determine_ending(data_type: str) -> str:
     elif data_type == "audio/x-m4a":
         return ".m4a"
     else:
-        raise RuntimeError("Unknown data type: " + data_type)
+        guess = mimetypes.guess_extension(data_type)
+        logging.warning(f"Unknown data type: '{data_type}'. Guessed: '"
+                        f"{guess}'.")
+        return guess
 
 
 if __name__ == "__main__":
-    # Create dir
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    OUTPUT_DIR = current_dir + "/" + OUTPUT_DIR
+    parser = argparse.ArgumentParser(description="Patreon Audio RSS "
+                                                 "Downloader")
+    parser.add_argument("-o", "--output_dir", action="store", type=str,
+                        help="Directory to store files.")
+    parser.add_argument(metavar="URL/FILENAME", action="store", dest="source",
+                        help="URL or FILENAME to load RSS XML from.", type=str)
+    action_group = parser.add_mutually_exclusive_group(required=True)
+    action_group.add_argument("-u", "--url", help="Load XML from URL.",
+                              action="store_true")
+    action_group.add_argument("-f", "--file", help="Load XML from File.",
+                              action="store_true")
+
+    args = parser.parse_args()
+
+    if args.output_dir is not None:
+        OUTPUT_DIR = args.output_dir
+    # Create output dir
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    if MODE == "FILE":
-        tree = ET.parse(INPUT_FILE)
-    elif MODE == "URL":
-        r = requests.get(URL, stream=True)
+    if args.file:
+        tree = ET.parse(args.source)
+    else:
+        r = requests.get(args.source, stream=True)
         tmp_file = tempfile.NamedTemporaryFile(mode="w+")
         tmp_file.write(r.content.decode())
         tree = ET.parse(tmp_file.name)
-    else:
-        raise RuntimeError("Unknown MODE, only 'FILE' and 'URL' allowed.")
+
     rss: Element = tree.getroot()
     channel: Element = rss[0]
     i = 0
