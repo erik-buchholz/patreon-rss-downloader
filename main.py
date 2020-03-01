@@ -5,6 +5,7 @@ A simple downloader for all audio files from a Patreon Premium Audio RSS.
 import logging
 import os
 import re
+import tempfile
 
 from clint.textui import progress
 import xml.etree.ElementTree as ET
@@ -97,9 +98,9 @@ if __name__ == "__main__":
         tree = ET.parse(INPUT_FILE)
     elif MODE == "URL":
         r = requests.get(URL, stream=True)
-        with open("tmp.txt", "w") as tmp_file:
-            tmp_file.write(r.content.decode())
-        tree = ET.parse("tmp.txt")
+        tmp_file = tempfile.NamedTemporaryFile(mode="w+")
+        tmp_file.write(r.content.decode())
+        tree = ET.parse(tmp_file.name)
     else:
         raise RuntimeError("Unknown MODE, only 'FILE' and 'URL' allowed.")
     rss: Element = tree.getroot()
