@@ -120,8 +120,9 @@ if __name__ == "__main__":
         tree = ET.parse(args.source)
     else:
         r = requests.get(args.source, stream=True)
-        tmp_file = tempfile.NamedTemporaryFile(mode="w+")
-        tmp_file.write(r.content.decode())
+        tmp_file = tempfile.NamedTemporaryFile(mode="w+", encoding='utf-8', delete=False)
+        tmp_file.write(r.content.decode('utf-8'))
+        tmp_file.close()
         tree = ET.parse(tmp_file.name)
 
     rss: Element = tree.getroot()
